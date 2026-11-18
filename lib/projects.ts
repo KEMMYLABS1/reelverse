@@ -2,6 +2,7 @@
 import type {
   CreateProjectInput,
   Project,
+  StoryBrief,
 } from "@/types/project";
 
 const PROJECTS_STORAGE_KEY = "reelverse-studio-projects";
@@ -92,6 +93,34 @@ export function updateProject(
     title: updates.title?.trim() ?? currentProject.title,
     description:
       updates.description?.trim() ?? currentProject.description,
+    updatedAt: new Date().toISOString(),
+  };
+
+  const updatedProjects = [...projects];
+  updatedProjects[projectIndex] = updatedProject;
+
+  saveProjects(updatedProjects);
+
+  return updatedProject;
+}
+
+export function updateProjectStoryBrief(
+  projectId: string,
+  storyBrief: StoryBrief,
+): Project | null {
+  const projects = getProjects();
+
+  const projectIndex = projects.findIndex(
+    (project) => project.id === projectId,
+  );
+
+  if (projectIndex === -1) {
+    return null;
+  }
+
+  const updatedProject: Project = {
+    ...projects[projectIndex],
+    storyBrief,
     updatedAt: new Date().toISOString(),
   };
 
