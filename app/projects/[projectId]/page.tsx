@@ -13,6 +13,7 @@ import {
 import { getProjects } from "@/lib/projects";
 import type { Project } from "@/types/project";
 import { ProjectEditForm } from "@/components/dashboard/project-edit-form";
+import { StoryBriefEditor } from "@/components/dashboard/story-brief-editor";
 
 interface ProjectPageProps {
   params: Promise<{
@@ -147,19 +148,28 @@ export default function ProjectPage({ params }: ProjectPageProps) {
               </div>
             </section>
 
-            <section className="mt-10">
-              <p className="text-xs font-medium uppercase tracking-widest text-gold">
-                Production workspace
-              </p>
+            <section className="mt-10 space-y-6">
+                <div>
+                    <p className="text-xs font-medium uppercase tracking-widest text-gold">
+                    Production workspace
+                    </p>
 
-              <h2 className="mt-2 text-xl font-semibold">
-                Develop your production
-              </h2>
+                    <h2 className="mt-2 text-xl font-semibold">
+                    Develop your production
+                    </h2>
 
-              <p className="mt-2 text-sm text-muted">
-                Your scripts, characters, scenes and production tools will live here.
-              </p>
-            </section>
+                    <p className="mt-2 text-sm text-muted">
+                    Build your creative foundation before moving into scripts,
+                    characters and scenes.
+                    </p>
+                </div>
+
+                <StoryBriefEditor
+                    key={project.id}
+                    project={project}
+                    onSaved={(updatedProject) => setProject(updatedProject)}
+                />
+                </section>
           </>
         )}
       </div>
