@@ -5,7 +5,6 @@ import {
   Clapperboard,
   CookingPot,
   Film,
-  FolderPlus,
   Landmark,
   Library,
   Sparkles,
@@ -14,6 +13,7 @@ import {
 
 import { StudioSidebar } from "../layout/studio-sidebar";
 import { StudioHeader } from "../layout/studio-header";
+import { ProjectWorkspace } from "./project-workspace";
 
 const studios = [
   {
@@ -156,32 +156,7 @@ export function StudioDashboard() {
             </div>
           </section>
 
-          <section id="projects">
-            <div className="mb-5">
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted">
-                Your workspace
-              </p>
-              <h2 className="mt-2 text-xl font-semibold sm:text-2xl">
-                Recent projects
-              </h2>
-            </div>
-
-            <div className="flex flex-col items-center rounded-xl border border-dashed border-border bg-surface/50 px-6 py-12 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full border border-gold/20 bg-gold/10 text-gold">
-                <FolderPlus size={25} strokeWidth={1.6} />
-              </div>
-
-              <h3 className="mt-5 font-semibold">
-                Your next production starts here
-              </h3>
-
-              <p className="mt-2 max-w-md text-sm leading-6 text-muted">
-                Your project workspace is ready. Project creation and
-                persistent storage will be introduced in the next development
-                milestone.
-              </p>
-            </div>
-          </section>
+          <ProjectWorkspace />
 
           <section id="assets" className="border-t border-border pt-8">
             <div className="flex items-center gap-3">
@@ -201,7 +176,7 @@ export function StudioDashboard() {
           </section>
 
           <footer className="border-t border-border pt-6 text-xs text-muted">
-            Reelverse Studio · Creative production workspace
+            KemmyLabs Studio · Creative production workspace
           </footer>
         </div>
       </main>
