@@ -25,7 +25,7 @@ export function StudioSidebar() {
           K
         </div>
         <div>
-          <p className="font-semibold tracking-wide">KemmyLabs</p>
+          <p className="font-semibold tracking-wide">Reelverse</p>
           <p className="text-xs text-muted">STUDIO</p>
         </div>
       </div>

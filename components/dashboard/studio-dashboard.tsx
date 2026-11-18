@@ -201,7 +201,7 @@ export function StudioDashboard() {
           </section>
 
           <footer className="border-t border-border pt-6 text-xs text-muted">
-            KemmyLabs Studio · Creative production workspace
+            Reelverse Studio · Creative production workspace
           </footer>
         </div>
       </main>
