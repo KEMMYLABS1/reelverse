@@ -66,3 +66,39 @@ export function deleteProject(projectId: string): void {
 
   saveProjects(updatedProjects);
 }
+
+
+export function updateProject(
+  projectId: string,
+  updates: Partial<
+    Pick<Project, "title" | "description" | "type" | "status">
+  >,
+): Project | null {
+  const projects = getProjects();
+
+  const projectIndex = projects.findIndex(
+    (project) => project.id === projectId,
+  );
+
+  if (projectIndex === -1) {
+    return null;
+  }
+
+  const currentProject = projects[projectIndex];
+
+  const updatedProject: Project = {
+    ...currentProject,
+    ...updates,
+    title: updates.title?.trim() ?? currentProject.title,
+    description:
+      updates.description?.trim() ?? currentProject.description,
+    updatedAt: new Date().toISOString(),
+  };
+
+  const updatedProjects = [...projects];
+  updatedProjects[projectIndex] = updatedProject;
+
+  saveProjects(updatedProjects);
+
+  return updatedProject;
+}
