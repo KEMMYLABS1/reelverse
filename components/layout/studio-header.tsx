@@ -5,7 +5,7 @@ export function StudioHeader() {
   return (
     <header className="flex min-h-20 items-center justify-between border-b border-border px-5 sm:px-8">
       <div>
-        <p className="text-xs text-muted">KemmyLabs Studio</p>
+        <p className="text-xs text-muted">ReelVerse Studio</p>
         <h2 className="mt-1 text-sm font-medium">Creative workspace</h2>
       </div>
 

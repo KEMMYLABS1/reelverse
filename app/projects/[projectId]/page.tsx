@@ -14,6 +14,7 @@ import { getProjects } from "@/lib/projects";
 import type { Project } from "@/types/project";
 import { ProjectEditForm } from "@/components/dashboard/project-edit-form";
 import { StoryBriefEditor } from "@/components/dashboard/story-brief-editor";
+import { EpisodeManager } from "@/components/dashboard/episode-manager";
 
 interface ProjectPageProps {
   params: Promise<{
@@ -170,6 +171,13 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                     onSaved={(updatedProject) => setProject(updatedProject)}
                 />
                 </section>
+
+                <section className="mt-8">
+                    <EpisodeManager
+                        project={project}
+                        onUpdated={setProject}
+                    />
+                    </section>
           </>
         )}
       </div>
