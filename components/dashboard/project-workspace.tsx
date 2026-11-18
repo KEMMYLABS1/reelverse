@@ -12,6 +12,7 @@ import {
 import { NewProjectForm } from "./new-project-form";
 import { deleteProject, getProjects } from "@/lib/projects";
 import type { Project, ProjectType } from "@/types/project";
+import Link from "next/link";
 
 const projectTypeLabels: Record<ProjectType, string> = {
   drama: "Drama",
@@ -136,51 +137,60 @@ export function ProjectWorkspace() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {projects.map((project) => (
             <article
-              key={project.id}
-              className="rounded-xl border border-border bg-surface p-5 transition-colors hover:border-gold/40"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10 text-gold">
-                  <Clapperboard size={20} />
-                </div>
+  key={project.id}
+  className="relative rounded-xl border border-border bg-surface transition-colors hover:border-gold/50"
+>
+  <Link
+    href={`/projects/${project.id}`}
+    aria-label={`Open project ${project.title}`}
+    className="block rounded-xl p-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold"
+  >
+    <div className="flex items-start justify-between gap-3">
+      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10 text-gold">
+        <Clapperboard size={20} />
+      </div>
+    </div>
 
-                <button
-                  type="button"
-                  onClick={() => handleProjectDelete(project.id)}
-                  aria-label={`Delete ${project.title}`}
-                  title="Delete project"
-                  className="rounded-lg p-2 text-muted transition-colors hover:bg-red-500/10 hover:text-red-400"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
+    <div className="mt-5">
+      <p className="text-xs font-medium text-gold">
+        {projectTypeLabels[project.type]}
+      </p>
 
-              <div className="mt-5">
-                <p className="text-xs font-medium text-gold">
-                  {projectTypeLabels[project.type]}
-                </p>
+      <h3 className="mt-2 truncate font-semibold">
+        {project.title}
+      </h3>
 
-                <h3 className="mt-2 truncate font-semibold">
-                  {project.title}
-                </h3>
+      <p className="mt-2 min-h-12 text-sm leading-6 text-muted">
+        {project.description || "No project description provided."}
+      </p>
+    </div>
 
-                <p className="mt-2 min-h-12 text-sm leading-6 text-muted">
-                  {project.description || "No project description provided."}
-                </p>
-              </div>
+    <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+      <span className="rounded-full border border-border px-3 py-1 text-xs capitalize text-muted">
+        {project.status.replace("_", " ")}
+      </span>
 
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-                <span className="rounded-full border border-border px-3 py-1 text-xs capitalize text-muted">
-                  {project.status.replace("_", " ")}
-                </span>
+      <span className="flex items-center gap-1.5 text-xs text-muted">
+        <Clock3 size={13} />
+        {formatDate(project.createdAt)}
+      </span>
+    </div>
 
-                <span className="flex items-center gap-1.5 text-xs text-muted">
-                  <Clock3 size={13} />
-                  {formatDate(project.createdAt)}
-                </span>
-              </div>
-            </article>
-          ))}
+    <span className="mt-4 block text-xs font-medium text-gold">
+      Open project →
+    </span>
+  </Link>
+
+  <button
+    type="button"
+    onClick={() => handleProjectDelete(project.id)}
+    aria-label={`Delete ${project.title}`}
+    title="Delete project"
+    className="absolute right-5 top-5 z-10 rounded-lg bg-surface p-2 text-muted transition-colors hover:bg-red-500/10 hover:text-red-400"
+  >
+    <Trash2 size={16} />
+  </button>
+</article>))}
         </div>
       )}
     </section>
