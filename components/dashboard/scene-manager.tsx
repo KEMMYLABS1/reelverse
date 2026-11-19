@@ -190,10 +190,12 @@ export function SceneManager({
 
   function handleEdit(scene: ScriptScene) {
     setForm(getFormData(scene));
+    setCharacters(getCharacters());
+    setCharacterAssignments(scene.characterAssignments ?? []);
     setError("");
     setIsCreating(false);
     setEditingSceneId(scene.id);
-  }
+    }
 
   function handleCancel() {
     setIsCreating(false);
@@ -551,7 +553,27 @@ function updateCharacterAssignment(
                   );
 
                   const isSelected = Boolean(assignment);
+                  const currentSceneNumber = editingSceneId
+  ? scenes.find((scene) => scene.id === editingSceneId)?.sceneNumber ??
+    Number.MAX_SAFE_INTEGER
+  : Number.MAX_SAFE_INTEGER;
 
+const previousAppearanceScene = [...scenes]
+  .filter((scene) => scene.sceneNumber < currentSceneNumber)
+  .sort((a, b) => b.sceneNumber - a.sceneNumber)
+  .find((scene) =>
+    scene.characterAssignments?.some(
+      (item) => item.characterId === character.id,
+    ),
+  );
+
+const previousAssignment = previousAppearanceScene?.characterAssignments?.find(
+  (item) => item.characterId === character.id,
+);
+
+const previousLook = character.looks.find(
+  (look) => look.id === previousAssignment?.lookId,
+);
                   return (
                     <div
                       key={character.id}
@@ -581,7 +603,32 @@ function updateCharacterAssignment(
 
                       {isSelected && assignment && (
                         <div className="space-y-3 pl-7">
-                          <div>
+                          {previousAppearanceScene && previousAssignment && (
+  <div className="rounded-lg border border-border bg-surface p-3">
+    <p className="text-xs font-semibold text-gold">
+      Previous Appearance · Scene {previousAppearanceScene.sceneNumber}
+    </p>
+
+    <p className="mt-1 text-sm text-foreground">
+      {previousLook?.name ?? "Default Appearance"}
+    </p>
+
+    {previousLook && (
+      <div className="mt-2 space-y-1 text-xs text-muted">
+        {previousLook.outfit && <p>Outfit: {previousLook.outfit}</p>}
+        {previousLook.hairstyle && <p>Hairstyle: {previousLook.hairstyle}</p>}
+        {previousLook.description && <p>{previousLook.description}</p>}
+      </div>
+    )}
+
+    {previousAssignment.continuityNotes && (
+      <p className="mt-2 text-xs text-muted">
+        Previous notes: {previousAssignment.continuityNotes}
+      </p>
+    )}
+  </div>
+)}
+<div>
                             <label className="mb-2 block text-sm text-muted">
                               Character Look
                             </label>
