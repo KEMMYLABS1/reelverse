@@ -184,3 +184,188 @@ export function removeCharacterFromProject(
     ),
   });
 }
+
+
+// Character reference image storage
+
+const CHARACTER_IMAGES_DB = "kemmylabs-character-images";
+const CHARACTER_IMAGES_STORE = "reference-images";
+
+const MAX_REFERENCE_IMAGE_SIZE = 10 * 1024 * 1024;
+
+export interface StoredCharacterImage {
+  id: string;
+  characterId: string;
+  blob: Blob;
+  name: string;
+  type: string;
+  createdAt: string;
+}
+
+function openCharacterImagesDatabase(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    if (!isBrowser() || !window.indexedDB) {
+      reject(new Error("IndexedDB is not available in this browser."));
+      return;
+    }
+
+    const request = window.indexedDB.open(
+      CHARACTER_IMAGES_DB,
+      1,
+    );
+
+    request.onupgradeneeded = () => {
+      const database = request.result;
+
+      if (!database.objectStoreNames.contains(CHARACTER_IMAGES_STORE)) {
+        const store = database.createObjectStore(
+          CHARACTER_IMAGES_STORE,
+          { keyPath: "id" },
+        );
+
+        store.createIndex("characterId", "characterId", {
+          unique: false,
+        });
+      }
+    };
+
+    request.onsuccess = () => resolve(request.result);
+
+    request.onerror = () => {
+      reject(
+        request.error ?? new Error("Unable to open image storage."),
+      );
+    };
+  });
+}
+
+export async function saveCharacterReferenceImage(
+  characterId: string,
+  file: File,
+): Promise<string> {
+  const character = getCharacterById(characterId);
+
+  if (!character) {
+    throw new Error("Character could not be found.");
+  }
+
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Please select a valid image file.");
+  }
+
+  if (file.size > MAX_REFERENCE_IMAGE_SIZE) {
+    throw new Error("Image must not exceed 10 MB.");
+  }
+
+  const database = await openCharacterImagesDatabase();
+
+  const image: StoredCharacterImage = {
+    id: crypto.randomUUID(),
+    characterId,
+    blob: file,
+    name: file.name,
+    type: file.type,
+    createdAt: new Date().toISOString(),
+  };
+
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(
+      CHARACTER_IMAGES_STORE,
+      "readwrite",
+    );
+
+    transaction.objectStore(CHARACTER_IMAGES_STORE).add(image);
+
+    transaction.oncomplete = () => {
+      database.close();
+      resolve(image.id);
+    };
+
+    transaction.onerror = () => {
+      database.close();
+      reject(
+        transaction.error ?? new Error("Unable to save reference image."),
+      );
+    };
+
+    transaction.onabort = () => {
+      database.close();
+      reject(
+        transaction.error ?? new Error("Image storage transaction aborted."),
+      );
+    };
+  });
+}
+
+export async function getCharacterReferenceImages(
+  characterId: string,
+): Promise<StoredCharacterImage[]> {
+  const database = await openCharacterImagesDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(
+      CHARACTER_IMAGES_STORE,
+      "readonly",
+    );
+
+    const index = transaction
+      .objectStore(CHARACTER_IMAGES_STORE)
+      .index("characterId");
+
+    const request = index.getAll(characterId);
+
+    request.onsuccess = () => {
+      resolve(request.result as StoredCharacterImage[]);
+    };
+
+    request.onerror = () => {
+      reject(
+        request.error ?? new Error("Unable to load reference images."),
+      );
+    };
+
+    transaction.oncomplete = () => database.close();
+
+    transaction.onerror = () => {
+      database.close();
+      reject(
+        transaction.error ?? new Error("Unable to read reference images."),
+      );
+    };
+  });
+}
+
+export async function deleteCharacterReferenceImage(
+  imageId: string,
+): Promise<void> {
+  const database = await openCharacterImagesDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(
+      CHARACTER_IMAGES_STORE,
+      "readwrite",
+    );
+
+    transaction.objectStore(CHARACTER_IMAGES_STORE).delete(imageId);
+
+    transaction.oncomplete = () => {
+      database.close();
+      resolve();
+    };
+
+    transaction.onerror = () => {
+      database.close();
+      reject(
+        transaction.error ?? new Error("Unable to delete reference image."),
+      );
+    };
+
+    transaction.onabort = () => {
+      database.close();
+      reject(
+        transaction.error ?? new Error("Image deletion was aborted."),
+      );
+    };
+  });
+}
+
