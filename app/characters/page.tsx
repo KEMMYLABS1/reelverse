@@ -31,6 +31,7 @@ import type {
   CharacterProfile,
   CharacterRole,
   CharacterOrigin,
+  CharacterLook,
 } from "@/types/project";
 
 type CharacterFormProps = {
@@ -506,6 +507,322 @@ function CharacterReferencePhotos({
   );
 }
 
+type CharacterLookFormProps = {
+  look?: CharacterLook;
+  onSave: (look: CharacterLook) => void;
+  onCancel: () => void;
+};
+
+function CharacterLookForm({
+  look,
+  onSave,
+  onCancel,
+}: CharacterLookFormProps) {
+  const [name, setName] = useState(look?.name ?? "");
+  const [outfit, setOutfit] = useState(look?.outfit ?? "");
+  const [hairstyle, setHairstyle] = useState(
+    look?.hairstyle ?? "",
+  );
+  const [description, setDescription] = useState(
+    look?.description ?? "",
+  );
+  const [notes, setNotes] = useState(look?.notes ?? "");
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    onSave({
+      id: look?.id ?? crypto.randomUUID(),
+      name: name.trim(),
+      outfit: outfit.trim(),
+      hairstyle: hairstyle.trim(),
+      description: description.trim(),
+      notes: notes.trim(),
+    });
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="mt-4 space-y-3 rounded-lg border border-border p-4"
+    >
+      <div>
+        <label className="mb-1 block text-xs text-muted">
+          Look name
+        </label>
+        <input
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          placeholder="e.g. Traditional African Look"
+          required
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-gold"
+        />
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs text-muted">
+          Outfit
+        </label>
+        <textarea
+          value={outfit}
+          onChange={(event) => setOutfit(event.target.value)}
+          placeholder="Describe the clothing and accessories"
+          rows={2}
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-gold"
+        />
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs text-muted">
+          Hairstyle
+        </label>
+        <input
+          value={hairstyle}
+          onChange={(event) => setHairstyle(event.target.value)}
+          placeholder="Describe the hairstyle"
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-gold"
+        />
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs text-muted">
+          Overall appearance
+        </label>
+        <textarea
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          placeholder="Describe the complete visual appearance"
+          rows={3}
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-gold"
+        />
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs text-muted">
+          Continuity notes
+        </label>
+        <textarea
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+          placeholder="Details that must remain consistent between scenes"
+          rows={2}
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-gold"
+        />
+      </div>
+
+      <div className="flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-lg border border-border px-4 py-2 text-xs text-muted hover:text-white"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="submit"
+          disabled={!name.trim()}
+          className="rounded-lg bg-gold px-4 py-2 text-xs font-semibold text-black transition hover:bg-gold-light disabled:opacity-50"
+        >
+          Save look
+        </button>
+      </div>
+    </form>
+  );
+}
+
+type CharacterLooksProps = {
+  character: CharacterProfile;
+  onUpdated: () => void;
+};
+
+function CharacterLooks({
+  character,
+  onUpdated,
+}: CharacterLooksProps) {
+  const [showForm, setShowForm] = useState(false);
+  const [editingLook, setEditingLook] =
+    useState<CharacterLook | undefined>(undefined);
+  const [error, setError] = useState("");
+
+  function handleSave(look: CharacterLook) {
+    const currentLooks = character.looks ?? [];
+
+    const updatedLooks = editingLook
+      ? currentLooks.map((item) =>
+          item.id === look.id ? look : item,
+        )
+      : [...currentLooks, look];
+
+    try {
+      const updated = updateCharacter(character.id, {
+        looks: updatedLooks,
+      });
+
+      if (!updated) {
+        throw new Error("Unable to save character look.");
+      }
+
+      setShowForm(false);
+      setEditingLook(undefined);
+      setError("");
+      onUpdated();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to save character look.",
+      );
+    }
+  }
+
+  function handleDelete(lookId: string) {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this character look?",
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const updated = updateCharacter(character.id, {
+        looks: character.looks.filter(
+          (look) => look.id !== lookId,
+        ),
+      });
+
+      if (!updated) {
+        throw new Error("Unable to delete character look.");
+      }
+
+      setError("");
+      onUpdated();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to delete character look.",
+      );
+    }
+  }
+
+  return (
+    <div className="mt-5 border-t border-border pt-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold">
+            Character looks
+          </h4>
+          <p className="mt-1 text-xs text-muted">
+            Manage different appearances for this character.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            setEditingLook(undefined);
+            setShowForm((current) => !current);
+            setError("");
+          }}
+          className="inline-flex items-center gap-2 rounded-lg border border-gold/30 px-3 py-2 text-xs font-medium text-gold hover:bg-gold/10"
+        >
+          <Plus size={14} />
+          Add look
+        </button>
+      </div>
+
+      {error && (
+        <p role="alert" className="mt-3 text-xs text-red-400">
+          {error}
+        </p>
+      )}
+
+      {showForm && (
+        <CharacterLookForm
+          look={editingLook}
+          onSave={handleSave}
+          onCancel={() => {
+            setShowForm(false);
+            setEditingLook(undefined);
+          }}
+        />
+      )}
+
+      {character.looks.length > 0 ? (
+        <div className="mt-4 space-y-3">
+          {character.looks.map((look) => (
+            <div
+              key={look.id}
+              className="rounded-lg border border-border p-3"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h5 className="text-sm font-medium">
+                    {look.name}
+                  </h5>
+
+                  {look.outfit && (
+                    <p className="mt-1 text-xs text-muted">
+                      Outfit: {look.outfit}
+                    </p>
+                  )}
+
+                  {look.hairstyle && (
+                    <p className="mt-1 text-xs text-muted">
+                      Hairstyle: {look.hairstyle}
+                    </p>
+                  )}
+
+                  {look.description && (
+                    <p className="mt-2 text-xs text-muted">
+                      {look.description}
+                    </p>
+                  )}
+
+                  {look.notes && (
+                    <p className="mt-2 text-xs text-gold">
+                      Notes: {look.notes}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingLook(look);
+                      setShowForm(true);
+                      setError("");
+                    }}
+                    aria-label={`Edit ${look.name}`}
+                    title="Edit look"
+                    className="rounded-md p-2 text-gold hover:bg-gold/10"
+                  >
+                    <Pencil size={14} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(look.id)}
+                    aria-label={`Delete ${look.name}`}
+                    title="Delete look"
+                    className="rounded-md p-2 text-red-400 hover:bg-red-400/10"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-4 text-xs text-muted">
+          No character looks created yet.
+        </p>
+      )}
+    </div>
+  );
+}
 export default function CharacterLibraryPage() {
   const [characters, setCharacters] = useState<CharacterProfile[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -847,7 +1164,10 @@ export default function CharacterLibraryPage() {
                         character={character}
                         onUploaded={() => setCharacters(getCharacters())}
                         />
-
+                    <CharacterLooks
+                        character={character}
+                        onUpdated={() => setCharacters(getCharacters())}
+                        />
                     <div className="mt-5 flex items-center gap-4 border-t border-border pt-4">
                       <button
                         type="button"
