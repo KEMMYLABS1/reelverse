@@ -77,6 +77,44 @@ export interface ScriptScene {
   notes: string;
 }
 
+
+export type CharacterRole =
+  | "primary"
+  | "supporting"
+  | "background"
+  | "narrator";
+
+export type CharacterOrigin =
+  | "real_person"
+  | "ai_generated";
+
+export interface CharacterLook {
+  id: string;
+  name: string;
+  outfit: string;
+  hairstyle: string;
+  description: string;
+  notes: string;
+}
+
+export interface CharacterProfile {
+  id: string;
+  name: string;
+  role: CharacterRole;
+  origin: CharacterOrigin;
+  description: string;
+  appearance: string;
+  personality: string;
+  voiceDescription: string;
+  referenceImages: string[];
+  looks: CharacterLook[];
+  projectIds: string[];
+  isPrimary: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+
 export interface ScriptEpisode {
   id: string;
   episodeNumber: number;
