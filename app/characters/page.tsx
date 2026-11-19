@@ -25,6 +25,7 @@ import {
   deleteCharacter,
   saveCharacterReferenceImage,
   getCharacterReferenceImages,
+  deleteCharacterReferenceImage,
 } from "@/lib/characters";
 import type {
   CharacterProfile,
@@ -388,6 +389,49 @@ function CharacterReferencePhotos({
     }
   }
 
+  async function handleDeletePhoto(imageId: string) {
+  const confirmed = window.confirm(
+    "Are you sure you want to delete this reference photo?",
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await deleteCharacterReferenceImage(imageId);
+
+    const referenceImages = character.referenceImages.filter(
+      (id) => id !== imageId,
+    );
+
+    const updated = updateCharacter(character.id, {
+      referenceImages,
+    });
+
+    if (!updated) {
+      throw new Error("Unable to update character profile.");
+    }
+
+    setPhotos((current) => {
+      const photoToDelete = current.find(
+        (photo) => photo.id === imageId,
+      );
+
+      if (photoToDelete) {
+        URL.revokeObjectURL(photoToDelete.url);
+      }
+
+      return current.filter((photo) => photo.id !== imageId);
+    });
+
+    onUploaded();
+  } catch (error) {
+    setUploadError(
+      error instanceof Error
+        ? error.message
+        : "Unable to delete reference photo.",
+    );
+  }
+}
   return (
     <div className="mt-5 border-t border-border pt-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -426,14 +470,27 @@ function CharacterReferencePhotos({
         <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4">
           {photos.map((photo) => (
             <div key={photo.id} className="min-w-0">
-              <Image
-                src={photo.url}
-                alt={`Reference photo: ${photo.name}`}
-                width={160}
-                height={160}
-                unoptimized
-                className="aspect-square w-full rounded-lg border border-border object-cover"
+              <div className="group relative">
+                <Image
+                  src={photo.url}
+                  alt={`Reference photo: ${photo.name}`}
+                  width={160}
+                  height={160}
+                  unoptimized
+                  className="aspect-square w-full rounded-lg border border-border object-cover"
                 />
+
+                <button
+                  type="button"
+                  onClick={() => handleDeletePhoto(photo.id)}
+                  className="absolute right-2 top-2 rounded-md bg-black/80 p-2 text-white opacity-100 transition hover:bg-red-600"
+                  aria-label={`Delete ${photo.name}`}
+                  title="Delete reference photo"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+
               <p className="mt-1 truncate text-[10px] text-muted">
                 {photo.name}
               </p>
