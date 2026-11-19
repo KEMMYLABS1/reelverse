@@ -261,7 +261,22 @@ function updateCharacterAssignment(
       setError("Please enter a scene title.");
       return;
     }
+    const validCharacterAssignments = characterAssignments.map(
+  (assignment) => {
+    const character = characters.find(
+      (item) => item.id === assignment.characterId,
+    );
 
+    if (!character) return assignment;
+
+    return {
+      ...assignment,
+      referenceImageIds: assignment.referenceImageIds.filter(
+        (imageId) => character.referenceImages.includes(imageId),
+      ),
+    };
+  },
+);
     const sceneData = {
       title: form.title.trim(),
       location: form.location.trim(),
@@ -270,7 +285,7 @@ function updateCharacterAssignment(
       action: form.action.trim(),
       dialogue: parseDialogue(form.dialogue),
       notes: form.notes.trim(),
-      characterAssignments,
+      characterAssignments: validCharacterAssignments,
     };
 
     if (editingSceneId) {
@@ -635,8 +650,7 @@ function updateCharacterAssignment(
             width={56}
             height={56}
             unoptimized
-            className="h-14 w-14 rounded-md border border-border object-cover"
-            />
+            className="h-14 w-14 rounded-md border border-border object-cover"            />
       ) : (
         <div className="flex h-14 w-14 items-center justify-center rounded-md border border-border text-xs text-muted">
           Loading
@@ -646,7 +660,7 @@ function updateCharacterAssignment(
       <span>{preview?.name || `Reference Photo ${index + 1}`}</span>
     </label>
   );
-})}    const checked = assignment.referenceImageIds.includes(imageId);
+})}   
                               </div>
                             )}
                           </div>
