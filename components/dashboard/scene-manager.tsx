@@ -1,7 +1,7 @@
 
 "use client";
-
-import { useState, type FormEvent } from "react";
+import Image from "next/image";
+import { useState, type FormEvent, useEffect } from "react";
 import {
   Clock3,
   MapPin,
@@ -28,7 +28,7 @@ import type {
   SceneCharacterAssignment,
 } from "@/types/project";
 
-import { getCharacters } from "@/lib/characters";
+import { getCharacters, getCharacterReferenceImages, } from "@/lib/characters";
 
 interface SceneManagerProps {
   project: Project;
@@ -111,8 +111,61 @@ export function SceneManager({
   const [characterAssignments, setCharacterAssignments] = useState<
    SceneCharacterAssignment[]
   >([]);
+  const [referencePreviews, setReferencePreviews] = useState<
+  Record<string, { id: string; name: string; url: string }[]>
+    >({});
 
   const scenes = episode.scenes ?? [];
+
+  useEffect(() => {
+  let cancelled = false;
+  const objectUrls: string[] = [];
+
+  async function loadReferencePreviews() {
+    try {
+      const results = await Promise.all(
+        characters.map(async (character) => {
+          const images = await getCharacterReferenceImages(
+            character.id,
+          );
+
+          const previews = images.map((image) => {
+            const url = URL.createObjectURL(image.blob);
+            objectUrls.push(url);
+
+            return {
+              id: image.id,
+              name: image.name,
+              url,
+            };
+          });
+
+          return [character.id, previews] as const;
+        }),
+      );
+
+      if (!cancelled) {
+        setReferencePreviews(Object.fromEntries(results));
+      }
+    } catch (error) {
+      console.error("Unable to load character reference previews:", error);
+
+      objectUrls.forEach((url) => URL.revokeObjectURL(url));
+      objectUrls.length = 0;
+
+      if (!cancelled) {
+        setReferencePreviews({});
+      }
+    }
+  }
+
+  void loadReferencePreviews();
+
+  return () => {
+    cancelled = true;
+    objectUrls.forEach((url) => URL.revokeObjectURL(url));
+  };
+}, [characters]);
 
   function publishUpdatedEpisode(updatedEpisode: ScriptEpisode) {
     const updatedProject: Project = {
@@ -548,44 +601,52 @@ function updateCharacterAssignment(
                               </p>
                             ) : (
                               <div className="space-y-2">
-                                {character.referenceImages.map(
-                                  (imageId, index) => {
-                                    const checked =
-                                      assignment.referenceImageIds.includes(
-                                        imageId,
-                                      );
+                                {character.referenceImages.map((imageId, index) => {
+  const checked = assignment.referenceImageIds.includes(imageId);
 
-                                    return (
-                                      <label
-                                        key={imageId}
-                                        className="flex items-center gap-2 text-sm text-foreground"
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={checked}
-                                          onChange={(event) =>
-                                            updateCharacterAssignment(
-                                              character.id,
-                                              {
-                                                referenceImageIds:
-                                                  event.target.checked
-                                                    ? [
-                                                        ...assignment.referenceImageIds,
-                                                        imageId,
-                                                      ]
-                                                    : assignment.referenceImageIds.filter(
-                                                        (id) => id !== imageId,
-                                                      ),
-                                              },
-                                            )
-                                          }
-                                          className="h-4 w-4 accent-yellow-500"
-                                        />
-                                        Reference Photo {index + 1}
-                                      </label>
-                                    );
-                                  },
-                                )}
+  const preview = referencePreviews[character.id]?.find(
+    (image) => image.id === imageId,
+  );
+
+  return (
+    <label
+      key={imageId}
+      className="flex items-center gap-3 rounded-lg border border-border p-2 text-sm text-foreground"
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) =>
+          updateCharacterAssignment(character.id, {
+            referenceImageIds: event.target.checked
+              ? [...assignment.referenceImageIds, imageId]
+              : assignment.referenceImageIds.filter(
+                  (id) => id !== imageId,
+                ),
+          })
+        }
+        className="h-4 w-4 accent-yellow-500"
+      />
+
+      {preview ? (
+        <Image
+            src={preview.url}
+            alt={preview.name}
+            width={56}
+            height={56}
+            unoptimized
+            className="h-14 w-14 rounded-md border border-border object-cover"
+            />
+      ) : (
+        <div className="flex h-14 w-14 items-center justify-center rounded-md border border-border text-xs text-muted">
+          Loading
+        </div>
+      )}
+
+      <span>{preview?.name || `Reference Photo ${index + 1}`}</span>
+    </label>
+  );
+})}    const checked = assignment.referenceImageIds.includes(imageId);
                               </div>
                             )}
                           </div>
