@@ -10,6 +10,9 @@ import {
   UserRound,
   Mic2,
   Sparkles,
+  Pencil,
+  Trash2,
+  X,
 } from "lucide-react";
 
 import { StudioSidebar } from "@/components/layout/studio-sidebar";
@@ -17,6 +20,8 @@ import { StudioHeader } from "@/components/layout/studio-header";
 import {
   createCharacter,
   getCharacters,
+  updateCharacter,
+  deleteCharacter,
 } from "@/lib/characters";
 import type {
   CharacterProfile,
@@ -24,19 +29,260 @@ import type {
   CharacterOrigin,
 } from "@/types/project";
 
+type CharacterFormProps = {
+  character?: CharacterProfile;
+  primaryExists: boolean;
+  onSave: (data: {
+    name: string;
+    role: CharacterRole;
+    origin: CharacterOrigin;
+    description: string;
+    appearance: string;
+    personality: string;
+    voiceDescription: string;
+  }) => void;
+  onCancel: () => void;
+  error: string;
+};
+
+function CharacterForm({
+  character,
+  primaryExists,
+  onSave,
+  onCancel,
+  error,
+}: CharacterFormProps) {
+  const [name, setName] = useState(character?.name ?? "");
+  const [role, setRole] = useState<CharacterRole>(
+    character?.role ?? "supporting",
+  );
+  const [origin, setOrigin] = useState<CharacterOrigin>(
+    character?.origin ?? "ai_generated",
+  );
+  const [description, setDescription] = useState(
+    character?.description ?? "",
+  );
+  const [appearance, setAppearance] = useState(
+    character?.appearance ?? "",
+  );
+  const [personality, setPersonality] = useState(
+    character?.personality ?? "",
+  );
+  const [voiceDescription, setVoiceDescription] = useState(
+    character?.voiceDescription ?? "",
+  );
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    onSave({
+      name: name.trim(),
+      role,
+      origin,
+      description: description.trim(),
+      appearance: appearance.trim(),
+      personality: personality.trim(),
+      voiceDescription: voiceDescription.trim(),
+    });
+  }
+
+  return (
+    <section className="rounded-xl border border-gold/30 bg-surface p-6">
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold">
+            {character ? "Edit character" : "Create a character profile"}
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            Define the identity and creative details of this character.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onCancel}
+          aria-label="Close character form"
+          className="rounded-lg p-2 text-muted hover:bg-surface-elevated hover:text-foreground"
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <label
+              htmlFor="character-name"
+              className="mb-2 block text-sm font-medium"
+            >
+              Character name *
+            </label>
+            <input
+              id="character-name"
+              required
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Enter character name"
+              className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm outline-none focus:border-gold"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="character-role"
+              className="mb-2 block text-sm font-medium"
+            >
+              Character role *
+            </label>
+            <select
+              id="character-role"
+              value={role}
+              onChange={(event) =>
+                setRole(event.target.value as CharacterRole)
+              }
+              className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm outline-none focus:border-gold"
+            >
+              <option value="primary" disabled={primaryExists}>
+                Primary Character
+              </option>
+              <option value="supporting">Supporting Character</option>
+              <option value="background">Background Character</option>
+              <option value="narrator">Narrator</option>
+            </select>
+            {primaryExists && (
+              <p className="mt-2 text-xs text-muted">
+                Another Primary Character already exists.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label
+              htmlFor="character-origin"
+              className="mb-2 block text-sm font-medium"
+            >
+              Character origin *
+            </label>
+            <select
+              id="character-origin"
+              value={origin}
+              onChange={(event) =>
+                setOrigin(event.target.value as CharacterOrigin)
+              }
+              className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm outline-none focus:border-gold"
+            >
+              <option value="real_person">Real person</option>
+              <option value="ai_generated">AI-generated</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label
+            htmlFor="character-description"
+            className="mb-2 block text-sm font-medium"
+          >
+            Character description
+          </label>
+          <textarea
+            id="character-description"
+            rows={3}
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="Who is this character? Describe their background and story."
+            className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm outline-none focus:border-gold"
+          />
+        </div>
+
+        <div>
+          <label
+            htmlFor="character-appearance"
+            className="mb-2 block text-sm font-medium"
+          >
+            Physical appearance
+          </label>
+          <textarea
+            id="character-appearance"
+            rows={3}
+            value={appearance}
+            onChange={(event) => setAppearance(event.target.value)}
+            placeholder="Describe facial features, build, age appearance and other visual details."
+            className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm outline-none focus:border-gold"
+          />
+        </div>
+
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <label
+              htmlFor="character-personality"
+              className="mb-2 block text-sm font-medium"
+            >
+              Personality
+            </label>
+            <textarea
+              id="character-personality"
+              rows={3}
+              value={personality}
+              onChange={(event) => setPersonality(event.target.value)}
+              placeholder="Describe their personality, behaviour and mannerisms."
+              className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm outline-none focus:border-gold"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="character-voice"
+              className="mb-2 block text-sm font-medium"
+            >
+              Voice description
+            </label>
+            <textarea
+              id="character-voice"
+              rows={3}
+              value={voiceDescription}
+              onChange={(event) =>
+                setVoiceDescription(event.target.value)
+              }
+              placeholder="Describe accent, tone, pitch and speaking style."
+              className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm outline-none focus:border-gold"
+            />
+          </div>
+        </div>
+
+        {error && (
+          <p role="alert" className="text-sm text-red-400">
+            {error}
+          </p>
+        )}
+
+        <div className="flex flex-wrap gap-3 border-t border-border pt-5">
+          <button
+            type="submit"
+            className="rounded-lg bg-gold px-5 py-3 text-sm font-semibold text-background transition-colors hover:bg-gold-light"
+          >
+            {character ? "Save changes" : "Save character"}
+          </button>
+
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-lg border border-border px-5 py-3 text-sm text-muted transition-colors hover:text-foreground"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
 export default function CharacterLibraryPage() {
   const [characters, setCharacters] = useState<CharacterProfile[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [editingCharacter, setEditingCharacter] =
+    useState<CharacterProfile | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState("");
-
-  const [name, setName] = useState("");
-  const [role, setRole] = useState<CharacterRole>("supporting");
-  const [origin, setOrigin] = useState<CharacterOrigin>("ai_generated");
-  const [description, setDescription] = useState("");
-  const [appearance, setAppearance] = useState("");
-  const [personality, setPersonality] = useState("");
-  const [voiceDescription, setVoiceDescription] = useState("");
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -55,42 +301,104 @@ export default function CharacterLibraryPage() {
     (character) => !character.isPrimary,
   );
 
-  function handleCreateCharacter(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function handleCreateCharacter(data: {
+    name: string;
+    role: CharacterRole;
+    origin: CharacterOrigin;
+    description: string;
+    appearance: string;
+    personality: string;
+    voiceDescription: string;
+  }) {
     setError("");
 
     try {
       const character = createCharacter({
-        name: name.trim(),
-        role,
-        origin,
-        description: description.trim(),
-        appearance: appearance.trim(),
-        personality: personality.trim(),
-        voiceDescription: voiceDescription.trim(),
+        ...data,
         referenceImages: [],
         looks: [],
         projectIds: [],
-        isPrimary: role === "primary",
+        isPrimary: data.role === "primary",
       });
 
       setCharacters((current) => [...current, character]);
-
-      setName("");
-      setRole("supporting");
-      setOrigin("ai_generated");
-      setDescription("");
-      setAppearance("");
-      setPersonality("");
-      setVoiceDescription("");
       setShowForm(false);
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Unable to create character. Please try again.",
+          : "Unable to create character.",
       );
     }
+  }
+
+  function handleUpdateCharacter(data: {
+    name: string;
+    role: CharacterRole;
+    origin: CharacterOrigin;
+    description: string;
+    appearance: string;
+    personality: string;
+    voiceDescription: string;
+  }) {
+    if (!editingCharacter) return;
+
+    setError("");
+
+    try {
+      const updated = updateCharacter(editingCharacter.id, {
+        ...data,
+        isPrimary: data.role === "primary",
+      });
+
+      if (!updated) {
+        setError("Character could not be found.");
+        return;
+      }
+
+      setCharacters(getCharacters());
+      setEditingCharacter(null);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to update character.",
+      );
+    }
+  }
+
+  function handleDeleteCharacter(character: CharacterProfile) {
+    if (character.isPrimary) {
+      setError("Your Primary Character cannot be deleted.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${character.name}? This cannot be undone.`,
+    );
+
+    if (!confirmed) return;
+
+    const deleted = deleteCharacter(character.id);
+
+    if (deleted) {
+      setCharacters(getCharacters());
+      setError("");
+    } else {
+      setError("Unable to delete this character.");
+    }
+  }
+
+  function openCreateForm() {
+    setEditingCharacter(null);
+    setShowForm(true);
+    setError("");
+  }
+
+  function openEditForm(character: CharacterProfile) {
+    setShowForm(false);
+    setEditingCharacter(character);
+    setError("");
   }
 
   return (
@@ -129,10 +437,7 @@ export default function CharacterLibraryPage() {
 
               <button
                 type="button"
-                onClick={() => {
-                  setShowForm((current) => !current);
-                  setError("");
-                }}
+                onClick={openCreateForm}
                 className="inline-flex w-fit items-center gap-2 rounded-lg bg-gold px-5 py-3 text-sm font-semibold text-background transition-colors hover:bg-gold-light"
               >
                 <Plus size={17} />
@@ -141,182 +446,32 @@ export default function CharacterLibraryPage() {
             </div>
           </section>
 
-          {showForm && (
-            <section className="rounded-xl border border-gold/30 bg-surface p-6">
-              <div className="mb-6">
-                <h2 className="text-lg font-semibold">
-                  Create a character profile
-                </h2>
-                <p className="mt-1 text-sm text-muted">
-                  Define the identity and creative details of this character.
-                </p>
-              </div>
+          {(showForm || editingCharacter) && (
+            <CharacterForm
+              key={editingCharacter?.id ?? "new-character"}
+              character={editingCharacter ?? undefined}
+              primaryExists={Boolean(
+                primaryCharacter &&
+                  primaryCharacter.id !== editingCharacter?.id,
+              )}
+              onSave={
+                editingCharacter
+                  ? handleUpdateCharacter
+                  : handleCreateCharacter
+              }
+              onCancel={() => {
+                setShowForm(false);
+                setEditingCharacter(null);
+                setError("");
+              }}
+              error={error}
+            />
+          )}
 
-              <form onSubmit={handleCreateCharacter} className="space-y-5">
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <div>
-                    <label
-                      htmlFor="character-name"
-                      className="mb-2 block text-sm font-medium"
-                    >
-                      Character name *
-                    </label>
-                    <input
-                      id="character-name"
-                      required
-                      value={name}
-                      onChange={(event) => setName(event.target.value)}
-                      placeholder="Enter character name"
-                      className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm outline-none focus:border-gold"
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="character-role"
-                      className="mb-2 block text-sm font-medium"
-                    >
-                      Character role *
-                    </label>
-                    <select
-                      id="character-role"
-                      value={role}
-                      onChange={(event) =>
-                        setRole(event.target.value as CharacterRole)
-                      }
-                      className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm outline-none focus:border-gold"
-                    >
-                      <option value="primary" disabled={Boolean(primaryCharacter)}>
-                        Primary Character
-                      </option>
-                      <option value="supporting">Supporting Character</option>
-                      <option value="background">Background Character</option>
-                      <option value="narrator">Narrator</option>
-                    </select>
-                    {primaryCharacter && (
-                      <p className="mt-2 text-xs text-muted">
-                        A Primary Character already exists.
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="character-origin"
-                      className="mb-2 block text-sm font-medium"
-                    >
-                      Character origin *
-                    </label>
-                    <select
-                      id="character-origin"
-                      value={origin}
-                      onChange={(event) =>
-                        setOrigin(event.target.value as CharacterOrigin)
-                      }
-                      className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm outline-none focus:border-gold"
-                    >
-                      <option value="real_person">Real person</option>
-                      <option value="ai_generated">AI-generated</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="character-description"
-                    className="mb-2 block text-sm font-medium"
-                  >
-                    Character description
-                  </label>
-                  <textarea
-                    id="character-description"
-                    rows={3}
-                    value={description}
-                    onChange={(event) => setDescription(event.target.value)}
-                    placeholder="Who is this character? Describe their background and story."
-                    className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm outline-none focus:border-gold"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="character-appearance"
-                    className="mb-2 block text-sm font-medium"
-                  >
-                    Physical appearance
-                  </label>
-                  <textarea
-                    id="character-appearance"
-                    rows={3}
-                    value={appearance}
-                    onChange={(event) => setAppearance(event.target.value)}
-                    placeholder="Describe facial features, build, age appearance and other visual details."
-                    className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm outline-none focus:border-gold"
-                  />
-                </div>
-
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <div>
-                    <label
-                      htmlFor="character-personality"
-                      className="mb-2 block text-sm font-medium"
-                    >
-                      Personality
-                    </label>
-                    <textarea
-                      id="character-personality"
-                      rows={3}
-                      value={personality}
-                      onChange={(event) => setPersonality(event.target.value)}
-                      placeholder="Describe their personality, behaviour and mannerisms."
-                      className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm outline-none focus:border-gold"
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="character-voice"
-                      className="mb-2 block text-sm font-medium"
-                    >
-                      Voice description
-                    </label>
-                    <textarea
-                      id="character-voice"
-                      rows={3}
-                      value={voiceDescription}
-                      onChange={(event) =>
-                        setVoiceDescription(event.target.value)
-                      }
-                      placeholder="Describe accent, tone, pitch and speaking style."
-                      className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm outline-none focus:border-gold"
-                    />
-                  </div>
-                </div>
-
-                {error && (
-                  <p role="alert" className="text-sm text-red-400">
-                    {error}
-                  </p>
-                )}
-
-                <div className="flex flex-wrap gap-3 border-t border-border pt-5">
-                  <button
-                    type="submit"
-                    className="rounded-lg bg-gold px-5 py-3 text-sm font-semibold text-background transition-colors hover:bg-gold-light"
-                  >
-                    Save character
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowForm(false)}
-                    className="rounded-lg border border-border px-5 py-3 text-sm text-muted transition-colors hover:text-foreground"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </section>
+          {error && !showForm && !editingCharacter && (
+            <p role="alert" className="text-sm text-red-400">
+              {error}
+            </p>
           )}
 
           <section className="grid gap-5 lg:grid-cols-2">
@@ -347,6 +502,14 @@ export default function CharacterLibraryPage() {
                       ? "Real person"
                       : "AI-generated"}
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => openEditForm(primaryCharacter)}
+                    className="mt-4 inline-flex items-center gap-2 text-xs font-medium text-gold hover:text-gold-light"
+                  >
+                    <Pencil size={14} />
+                    Edit primary character
+                  </button>
                 </div>
               ) : (
                 <p className="mt-5 border-t border-border pt-4 text-xs text-muted">
@@ -424,7 +587,7 @@ export default function CharacterLibraryPage() {
 
                     <h3 className="mt-4 font-semibold">{character.name}</h3>
 
-                    <p className="mt-1 text-xs text-muted">
+                    <p className="mt-1 text-xs capitalize text-muted">
                       {character.role.replace("_", " ")} ·{" "}
                       {character.origin === "real_person"
                         ? "Real person"
@@ -435,12 +598,43 @@ export default function CharacterLibraryPage() {
                       {character.description || "No description added yet."}
                     </p>
 
+                    {character.appearance && (
+                      <p className="mt-3 text-xs leading-5 text-muted">
+                        <span className="font-semibold text-foreground">
+                          Appearance:
+                        </span>{" "}
+                        {character.appearance}
+                      </p>
+                    )}
+
                     {character.voiceDescription && (
                       <div className="mt-4 flex items-start gap-2 border-t border-border pt-4 text-xs text-muted">
                         <Mic2 size={15} className="shrink-0 text-gold" />
                         {character.voiceDescription}
                       </div>
                     )}
+
+                    <div className="mt-5 flex items-center gap-4 border-t border-border pt-4">
+                      <button
+                        type="button"
+                        onClick={() => openEditForm(character)}
+                        className="inline-flex items-center gap-2 text-xs font-medium text-gold hover:text-gold-light"
+                      >
+                        <Pencil size={14} />
+                        Edit
+                      </button>
+
+                      {!character.isPrimary && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCharacter(character)}
+                          className="inline-flex items-center gap-2 text-xs font-medium text-red-400 hover:text-red-300"
+                        >
+                          <Trash2 size={14} />
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </article>
                 ))}
               </div>

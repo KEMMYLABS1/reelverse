@@ -90,14 +90,34 @@ export function updateCharacter(
   if (characterIndex === -1) return null;
 
   const currentCharacter = characters[characterIndex];
+if (
+  updates.isPrimary === true &&
+  characters.some(
+    (character) =>
+      character.id !== characterId && character.isPrimary,
+  )
+) {
+  throw new Error("A primary character already exists.");
+}
 
-  if (
-    updates.isPrimary === true &&
-    !currentCharacter.isPrimary &&
-    characters.some((character) => character.isPrimary)
-  ) {
-    throw new Error("A primary character already exists.");
-  }
+if (
+  updates.role === "primary" &&
+  updates.isPrimary === false
+) {
+  throw new Error(
+    "A character with the primary role must be designated as primary.",
+  );
+}
+
+if (
+  updates.isPrimary === true &&
+  updates.role !== undefined &&
+  updates.role !== "primary"
+) {
+  throw new Error(
+    "A primary character must have the primary role.",
+  );
+}
 
   const updatedCharacter: CharacterProfile = {
     ...currentCharacter,
