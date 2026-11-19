@@ -137,6 +137,7 @@ function CharacterForm({
             <select
               id="character-role"
               value={role}
+              disabled={Boolean(character?.isPrimary)}
               onChange={(event) =>
                 setRole(event.target.value as CharacterRole)
               }
@@ -149,6 +150,12 @@ function CharacterForm({
               <option value="background">Background Character</option>
               <option value="narrator">Narrator</option>
             </select>
+
+            {character?.isPrimary && (
+                <p className="mt-2 text-xs text-muted">
+                    Your Primary Character role is protected and cannot be changed.
+                </p>
+                )}
             {primaryExists && (
               <p className="mt-2 text-xs text-muted">
                 Another Primary Character already exists.
