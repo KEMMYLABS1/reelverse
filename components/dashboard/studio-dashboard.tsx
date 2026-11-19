@@ -1,4 +1,6 @@
 
+import Link from "next/link";
+
 import {
   ArrowRight,
   CalendarDays,
@@ -118,11 +120,8 @@ export function StudioDashboard() {
               {studios.map((studio, index) => {
                 const Icon = studio.icon;
 
-                return (
-                  <article
-                    key={studio.name}
-                    className="group rounded-xl border border-border bg-surface p-5 transition-all duration-200 hover:border-gold/40 hover:bg-surface-elevated"
-                  >
+                const cardContent = (
+                  <>
                     <div className="mb-6 flex items-start justify-between">
                       <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-gold/20 bg-gold/10 text-gold">
                         <Icon size={21} strokeWidth={1.7} />
@@ -147,9 +146,31 @@ export function StudioDashboard() {
 
                     <div className="mt-5 border-t border-border pt-4">
                       <span className="text-xs text-muted">
-                        Module planned
+                        {studio.name === "Character Library"
+                          ? "Open character library"
+                          : "Module planned"}
                       </span>
                     </div>
+                  </>
+                );
+
+                const cardClassName =
+                  "group rounded-xl border border-border bg-surface p-5 transition-all duration-200 hover:border-gold/40 hover:bg-surface-elevated";
+
+                return studio.name === "Character Library" ? (
+                  <Link
+                    href="/characters"
+                    key={studio.name}
+                    className={cardClassName}
+                  >
+                    {cardContent}
+                  </Link>
+                ) : (
+                  <article
+                    key={studio.name}
+                    className={cardClassName}
+                  >
+                    {cardContent}
                   </article>
                 );
               })}
@@ -176,7 +197,7 @@ export function StudioDashboard() {
           </section>
 
           <footer className="border-t border-border pt-6 text-xs text-muted">
-            KemmyLabs Studio · Creative production workspace
+            ReelVerse Studio · Creative production workspace
           </footer>
         </div>
       </main>

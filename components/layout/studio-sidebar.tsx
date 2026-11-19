@@ -1,4 +1,6 @@
 
+import Link from "next/link";
+
 import {
   CalendarDays,
   Clapperboard,
@@ -7,14 +9,16 @@ import {
   Library,
   Settings2,
   Sparkles,
+  UsersRound,
 } from "lucide-react";
 
 const navigation = [
-  { label: "Overview", href: "#overview", icon: LayoutDashboard },
-  { label: "Creative Studios", href: "#studios", icon: Clapperboard },
-  { label: "My Projects", href: "#projects", icon: FolderOpen },
-  { label: "Asset Library", href: "#assets", icon: Library },
-  { label: "Publishing Planner", href: "#publishing", icon: CalendarDays },
+  { label: "Overview", href: "/#overview", icon: LayoutDashboard },
+  { label: "Creative Studios", href: "/#studios", icon: Clapperboard },
+  { label: "Character Library", href: "/characters", icon: UsersRound },
+  { label: "My Projects", href: "/#projects", icon: FolderOpen },
+  { label: "Asset Library", href: "/#assets", icon: Library },
+  { label: "Publishing Planner", href: "/#publishing", icon: CalendarDays },
 ];
 
 export function StudioSidebar() {
@@ -24,8 +28,9 @@ export function StudioSidebar() {
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold text-lg font-bold text-background">
           K
         </div>
+
         <div>
-          <p className="font-semibold tracking-wide">Reelverse</p>
+          <p className="font-semibold tracking-wide">KemmyLabs</p>
           <p className="text-xs text-muted">STUDIO</p>
         </div>
       </div>
@@ -36,20 +41,15 @@ export function StudioSidebar() {
         </p>
 
         <nav aria-label="Main navigation" className="space-y-1">
-          {navigation.map(({ label, href, icon: Icon }, index) => (
-            <a
+          {navigation.map(({ label, href, icon: Icon }) => (
+            <Link
               key={label}
               href={href}
-              aria-current={index === 0 ? "page" : undefined}
-              className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition-colors ${
-                index === 0
-                  ? "bg-surface-hover text-gold"
-                  : "text-muted hover:bg-surface-hover hover:text-foreground"
-              }`}
+              className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm text-muted transition-colors hover:bg-surface-hover hover:text-foreground"
             >
               <Icon size={18} strokeWidth={1.8} />
               <span>{label}</span>
-            </a>
+            </Link>
           ))}
         </nav>
       </div>
@@ -60,18 +60,20 @@ export function StudioSidebar() {
             <Sparkles size={16} />
             <span className="text-xs font-semibold">Creative workspace</span>
           </div>
+
           <p className="text-xs leading-5 text-muted">
-            Your private space for developing stories and producing original content.
+            Your private space for developing stories and producing original
+            content.
           </p>
         </div>
 
-        <a
-          href="#assets"
+        <Link
+          href="/#assets"
           className="mt-5 flex items-center gap-3 px-2 text-sm text-muted hover:text-foreground"
         >
           <Settings2 size={17} />
           Workspace settings
-        </a>
+        </Link>
       </div>
     </aside>
   );
