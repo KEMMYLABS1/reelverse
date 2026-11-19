@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type ChangeEvent } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -13,8 +13,9 @@ import {
   Pencil,
   Trash2,
   X,
+  ImagePlus,
 } from "lucide-react";
-
+import Image from "next/image";
 import { StudioSidebar } from "@/components/layout/studio-sidebar";
 import { StudioHeader } from "@/components/layout/studio-header";
 import {
@@ -22,6 +23,8 @@ import {
   getCharacters,
   updateCharacter,
   deleteCharacter,
+  saveCharacterReferenceImage,
+  getCharacterReferenceImages,
 } from "@/lib/characters";
 import type {
   CharacterProfile,
@@ -280,6 +283,169 @@ function CharacterForm({
         </div>
       </form>
     </section>
+  );
+}
+
+type CharacterReferencePhotosProps = {
+  character: CharacterProfile;
+  onUploaded: () => void;
+};
+
+function CharacterReferencePhotos({
+  character,
+  onUploaded,
+}: CharacterReferencePhotosProps) {
+  const [photos, setPhotos] = useState<
+    { id: string; name: string; url: string }[]
+  >([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    const objectUrls: string[] = [];
+
+    getCharacterReferenceImages(character.id)
+      .then((images) => {
+        if (!active) return;
+
+        const loadedPhotos = images.map((image) => {
+          const url = URL.createObjectURL(image.blob);
+          objectUrls.push(url);
+
+          return {
+            id: image.id,
+            name: image.name,
+            url,
+          };
+        });
+
+        setPhotos(loadedPhotos);
+      })
+      .catch(() => {
+        if (active) {
+          setUploadError("Unable to load reference photos.");
+        }
+      });
+
+    return () => {
+      active = false;
+      objectUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [character.id]);
+
+  async function handleUpload(
+    event: ChangeEvent<HTMLInputElement>,
+  ) {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+
+    if (files.length === 0) return;
+
+    setUploading(true);
+    setUploadError("");
+
+    try {
+      let referenceImages = [...character.referenceImages];
+
+      for (const file of files) {
+        const imageId = await saveCharacterReferenceImage(
+          character.id,
+          file,
+        );
+
+        referenceImages = [...referenceImages, imageId];
+
+        const updated = updateCharacter(character.id, {
+          referenceImages,
+        });
+
+        if (!updated) {
+          throw new Error("Unable to update the character profile.");
+        }
+      }
+
+      onUploaded();
+
+      const images = await getCharacterReferenceImages(character.id);
+      setPhotos((current) => {
+        current.forEach((photo) => URL.revokeObjectURL(photo.url));
+
+        return images.map((image) => ({
+          id: image.id,
+          name: image.name,
+          url: URL.createObjectURL(image.blob),
+        }));
+      });
+    } catch (err) {
+      setUploadError(
+        err instanceof Error
+          ? err.message
+          : "Unable to upload reference photos.",
+      );
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="mt-5 border-t border-border pt-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold">Reference photos</h4>
+          <p className="mt-1 text-xs text-muted">
+            Upload clear photos to guide this character&apos;s visual identity.
+          </p>
+        </div>
+
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gold/30 px-3 py-2 text-xs font-medium text-gold transition-colors hover:bg-gold/10">
+          <ImagePlus size={15} />
+          {uploading ? "Uploading..." : "Add photos"}
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            disabled={uploading}
+            onChange={handleUpload}
+            className="sr-only"
+          />
+        </label>
+      </div>
+
+      <p className="mt-2 text-[11px] text-muted">
+        Image files only. Maximum 10 MB per photo.
+      </p>
+
+      {uploadError && (
+        <p role="alert" className="mt-3 text-xs text-red-400">
+          {uploadError}
+        </p>
+      )}
+
+      {photos.length > 0 ? (
+        <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4">
+          {photos.map((photo) => (
+            <div key={photo.id} className="min-w-0">
+              <Image
+                src={photo.url}
+                alt={`Reference photo: ${photo.name}`}
+                width={160}
+                height={160}
+                unoptimized
+                className="aspect-square w-full rounded-lg border border-border object-cover"
+                />
+              <p className="mt-1 truncate text-[10px] text-muted">
+                {photo.name}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-4 text-xs text-muted">
+          No reference photos uploaded yet.
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -620,6 +786,10 @@ export default function CharacterLibraryPage() {
                         {character.voiceDescription}
                       </div>
                     )}
+                    <CharacterReferencePhotos
+                        character={character}
+                        onUploaded={() => setCharacters(getCharacters())}
+                        />
 
                     <div className="mt-5 flex items-center gap-4 border-t border-border pt-4">
                       <button
