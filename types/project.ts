@@ -75,8 +75,15 @@ export interface ScriptScene {
   action: string;
   dialogue: DialogueLine[];
   notes: string;
+  characterAssignments?: SceneCharacterAssignment[];
 }
 
+export interface SceneCharacterAssignment {
+  characterId: string;
+  lookId: string | null;
+  referenceImageIds: string[];
+  continuityNotes: string;
+}
 
 export type CharacterRole =
   | "primary"

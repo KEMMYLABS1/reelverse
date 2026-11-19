@@ -24,7 +24,11 @@ import type {
   ScriptEpisode,
   ScriptScene,
   DialogueLine,
+  CharacterProfile,
+  SceneCharacterAssignment,
 } from "@/types/project";
+
+import { getCharacters } from "@/lib/characters";
 
 interface SceneManagerProps {
   project: Project;
@@ -103,6 +107,10 @@ export function SceneManager({
   const [editingSceneId, setEditingSceneId] = useState<string | null>(null);
   const [form, setForm] = useState<SceneFormData>(emptyForm);
   const [error, setError] = useState("");
+  const [characters, setCharacters] = useState<CharacterProfile[]>([]);
+  const [characterAssignments, setCharacterAssignments] = useState<
+   SceneCharacterAssignment[]
+  >([]);
 
   const scenes = episode.scenes ?? [];
 
@@ -123,6 +131,8 @@ export function SceneManager({
     setError("");
     setEditingSceneId(null);
     setIsCreating(true);
+    setCharacters(getCharacters());
+    setCharacterAssignments([]);
   }
 
   function handleEdit(scene: ScriptScene) {
@@ -137,6 +147,7 @@ export function SceneManager({
     setEditingSceneId(null);
     setForm(emptyForm);
     setError("");
+    setCharacterAssignments([]);
   }
 
   function handleChange(
@@ -148,6 +159,46 @@ export function SceneManager({
       [field]: value,
     }));
   }
+
+  function toggleCharacterAssignment(
+  characterId: string,
+  selected: boolean,
+) {
+  setCharacterAssignments((current) => {
+    if (selected) {
+      if (current.some((item) => item.characterId === characterId)) {
+        return current;
+      }
+
+      return [
+        ...current,
+        {
+          characterId,
+          lookId: null,
+          referenceImageIds: [],
+          continuityNotes: "",
+        },
+      ];
+    }
+
+    return current.filter(
+      (item) => item.characterId !== characterId,
+    );
+  });
+}
+
+function updateCharacterAssignment(
+  characterId: string,
+  updates: Partial<SceneCharacterAssignment>,
+) {
+  setCharacterAssignments((current) =>
+    current.map((item) =>
+      item.characterId === characterId
+        ? { ...item, ...updates }
+        : item,
+    ),
+  );
+}
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -166,6 +217,7 @@ export function SceneManager({
       action: form.action.trim(),
       dialogue: parseDialogue(form.dialogue),
       notes: form.notes.trim(),
+      characterAssignments,
     };
 
     if (editingSceneId) {
@@ -407,6 +459,161 @@ export function SceneManager({
           {error && (
             <p className="text-sm text-red-400">{error}</p>
           )}
+          
+          {/* Character Visual Continuity */}
+          <div className="space-y-4 rounded-lg border border-border bg-background p-4">
+            <div>
+              <h4 className="font-semibold text-foreground">
+                Character Visual Continuity
+              </h4>
+              <p className="mt-1 text-sm text-muted">
+                Assign characters and select their appearance references for this scene.
+              </p>
+            </div>
+
+            {characters.length === 0 ? (
+              <p className="text-sm text-muted">
+                No characters found. Add characters to your Character Library first.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {characters.map((character) => {
+                  const assignment = characterAssignments.find(
+                    (item) => item.characterId === character.id,
+                  );
+
+                  const isSelected = Boolean(assignment);
+
+                  return (
+                    <div
+                      key={character.id}
+                      className="space-y-3 rounded-lg border border-border p-3"
+                    >
+                      <label className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={(event) =>
+                            toggleCharacterAssignment(
+                              character.id,
+                              event.target.checked,
+                            )
+                          }
+                          className="h-4 w-4 accent-yellow-500"
+                        />
+                        <span className="font-medium text-foreground">
+                          {character.name}
+                        </span>
+                        {character.isPrimary && (
+                          <span className="text-xs text-gold">
+                            Main Character
+                          </span>
+                        )}
+                      </label>
+
+                      {isSelected && assignment && (
+                        <div className="space-y-3 pl-7">
+                          <div>
+                            <label className="mb-2 block text-sm text-muted">
+                              Character Look
+                            </label>
+                            <select
+                              value={assignment.lookId ?? ""}
+                              onChange={(event) =>
+                                updateCharacterAssignment(character.id, {
+                                  lookId: event.target.value || null,
+                                })
+                              }
+                              className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none focus:border-gold"
+                            >
+                              <option value="">
+                                Default Appearance
+                              </option>
+                              {character.looks.map((look) => (
+                                <option key={look.id} value={look.id}>
+                                  {look.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <p className="mb-2 text-sm text-muted">
+                              Reference Photos
+                            </p>
+
+                            {character.referenceImages.length === 0 ? (
+                              <p className="text-xs text-muted">
+                                No reference photos uploaded for this character.
+                              </p>
+                            ) : (
+                              <div className="space-y-2">
+                                {character.referenceImages.map(
+                                  (imageId, index) => {
+                                    const checked =
+                                      assignment.referenceImageIds.includes(
+                                        imageId,
+                                      );
+
+                                    return (
+                                      <label
+                                        key={imageId}
+                                        className="flex items-center gap-2 text-sm text-foreground"
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={checked}
+                                          onChange={(event) =>
+                                            updateCharacterAssignment(
+                                              character.id,
+                                              {
+                                                referenceImageIds:
+                                                  event.target.checked
+                                                    ? [
+                                                        ...assignment.referenceImageIds,
+                                                        imageId,
+                                                      ]
+                                                    : assignment.referenceImageIds.filter(
+                                                        (id) => id !== imageId,
+                                                      ),
+                                              },
+                                            )
+                                          }
+                                          className="h-4 w-4 accent-yellow-500"
+                                        />
+                                        Reference Photo {index + 1}
+                                      </label>
+                                    );
+                                  },
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="mb-2 block text-sm text-muted">
+                              Continuity Notes
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={assignment.continuityNotes}
+                              onChange={(event) =>
+                                updateCharacterAssignment(character.id, {
+                                  continuityNotes: event.target.value,
+                                })
+                              }
+                              placeholder="e.g. Keep the same hairstyle, outfit and facial appearance..."
+                              className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none focus:border-gold"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           <div className="flex flex-wrap gap-3">
             <button
