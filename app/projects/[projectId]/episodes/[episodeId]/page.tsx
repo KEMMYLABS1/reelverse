@@ -14,6 +14,7 @@ import {
 import { getProjects } from "@/lib/projects";
 import type { Project, ScriptEpisode } from "@/types/project";
 import { SceneManager } from "@/components/dashboard/scene-manager";
+import { VideoProduction } from "@/components/dashboard/video-production";
 
 interface EpisodePageProps {
   params: Promise<{
@@ -160,8 +161,12 @@ export default function EpisodePage({ params }: EpisodePageProps) {
             </div>
           </div>
         </section>
+        <section className="mt-8 space-y-8">
+          <VideoProduction
+            project={project}
+            episode={episode}
+          />
 
-        <section className="mt-8">
           <SceneManager
             project={project}
             episode={episode}
