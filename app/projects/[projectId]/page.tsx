@@ -15,6 +15,7 @@ import type { Project } from "@/types/project";
 import { ProjectEditForm } from "@/components/dashboard/project-edit-form";
 import { StoryBriefEditor } from "@/components/dashboard/story-brief-editor";
 import { EpisodeManager } from "@/components/dashboard/episode-manager";
+import { AIStoryCreator } from "@/components/dashboard/ai-story-creator";
 
 interface ProjectPageProps {
   params: Promise<{
@@ -164,6 +165,11 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                     characters and scenes.
                     </p>
                 </div>
+
+                <AIStoryCreator
+                    project={project}
+                    onUpdated={setProject}
+                />
 
                 <StoryBriefEditor
                     key={project.id}

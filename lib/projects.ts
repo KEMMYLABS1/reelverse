@@ -448,3 +448,54 @@ export function deleteScene(
 
   return true;
 }
+
+// ==========================================
+// Generated Story Package Approval
+// ==========================================
+
+export function approveStoryPackage(
+  projectId: string,
+  storyBrief: StoryBrief,
+  episodeOutlines: Array<{ title: string; summary: string }>,
+): Project | null {
+  const projects = getProjects();
+
+  const projectIndex = projects.findIndex(
+    (project) => project.id === projectId,
+  );
+
+  if (projectIndex === -1) return null;
+  if (episodeOutlines.length === 0) return null;
+
+  const project = projects[projectIndex];
+  const now = new Date().toISOString();
+
+  const existingEpisodes = project.episodes ?? [];
+
+  const newEpisodes: ScriptEpisode[] = episodeOutlines.map(
+    (outline, index) => ({
+      id: crypto.randomUUID(),
+      episodeNumber: existingEpisodes.length + index + 1,
+      title: outline.title.trim(),
+      summary: outline.summary.trim(),
+      status: "draft",
+      scenes: [],
+      createdAt: now,
+      updatedAt: now,
+    }),
+  );
+
+  const updatedProject: Project = {
+    ...project,
+    storyBrief,
+    episodes: [...existingEpisodes, ...newEpisodes],
+    updatedAt: now,
+  };
+
+  const updatedProjects = [...projects];
+  updatedProjects[projectIndex] = updatedProject;
+
+  saveProjects(updatedProjects);
+
+  return updatedProject;
+}

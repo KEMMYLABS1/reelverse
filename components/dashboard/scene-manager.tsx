@@ -29,6 +29,7 @@ import type {
 } from "@/types/project";
 
 import { getCharacters, getCharacterReferenceImages, } from "@/lib/characters";
+import { AISceneGenerator } from "@/components/dashboard/ai-scene-generator";
 
 interface SceneManagerProps {
   project: Project;
@@ -376,6 +377,11 @@ function updateCharacterAssignment(
 
   return (
     <section className="space-y-6">
+      <AISceneGenerator
+        project={project}
+        episode={episode}
+        onUpdated={onUpdated}
+      />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-foreground">
