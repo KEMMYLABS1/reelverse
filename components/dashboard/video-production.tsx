@@ -8,6 +8,9 @@ import {
   RefreshCw,
   Clock3,
   HardDrive,
+  Play,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 
 import {
@@ -71,6 +74,12 @@ export function VideoProduction({
   const [success, setSuccess] = useState("");
 
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [timelineOrder, setTimelineOrder] = useState<string[]>([]);
+  const [timelineIndex, setTimelineIndex] = useState(0);
+  const [timelinePlaying, setTimelinePlaying] = useState(false);
+  const timelineVideoRef = useRef<HTMLVideoElement | null>(null);
+  const [draggedClipId, setDraggedClipId] = useState<string | null>(null);
+  const [dragOverClipId, setDragOverClipId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -79,11 +88,33 @@ export function VideoProduction({
       try {
         const savedAssets = await getVideoAssets(project.id, episode.id);
 
-        if (!active) return;
+          if (!active) return;
+     
+          setAssets(savedAssets);
 
-        setAssets(savedAssets);
+        const orderKey = `kemmylabs-timeline-${project.id}-${episode.id}`;
+        const savedOrder = localStorage.getItem(orderKey);
+
+        let parsedOrder: string[] = [];
+
+        try {
+          parsedOrder = savedOrder ? JSON.parse(savedOrder) : [];
+        } catch {
+          parsedOrder = [];
+        }
+
+        const validSavedOrder = parsedOrder.filter((id) =>
+          savedAssets.some((asset) => asset.id === id),
+        );
+
+        const missingAssets = savedAssets
+          .filter((asset) => !validSavedOrder.includes(asset.id))
+          .map((asset) => asset.id);
+
+        setTimelineOrder([...validSavedOrder, ...missingAssets]);
 
         const urls: Record<string, string> = {};
+
 
         savedAssets.forEach((asset) => {
           urls[asset.id] = URL.createObjectURL(asset.blob);
@@ -218,6 +249,81 @@ export function VideoProduction({
       setError("Unable to remove this video clip.");
     }
   }
+      const orderedAssets = timelineOrder
+      .map((id) => assets.find((asset) => asset.id === id))
+      .filter((asset): asset is VideoAsset => Boolean(asset));
+
+    function moveTimelineClip(index: number, direction: -1 | 1) {
+      const targetIndex = index + direction;
+
+      if (targetIndex < 0 || targetIndex >= orderedAssets.length) return;
+
+      const updatedOrder = orderedAssets.map((asset) => asset.id);
+
+      [updatedOrder[index], updatedOrder[targetIndex]] = [
+        updatedOrder[targetIndex],
+        updatedOrder[index],
+      ]; 
+
+      setTimelineOrder(updatedOrder);
+
+      localStorage.setItem(
+        `kemmylabs-timeline-${project.id}-${episode.id}`,
+        JSON.stringify(updatedOrder),
+      );
+
+      setTimelineIndex(0);
+      setTimelinePlaying(false);
+    }
+    function handleTimelineDrop(targetClipId: string) {
+    if (!draggedClipId || draggedClipId === targetClipId) {
+      setDraggedClipId(null);
+      setDragOverClipId(null);
+      return;
+    }
+
+    const updatedOrder = orderedAssets.map((asset) => asset.id);
+
+    const draggedIndex = updatedOrder.indexOf(draggedClipId);
+    const targetIndex = updatedOrder.indexOf(targetClipId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    updatedOrder.splice(draggedIndex, 1);
+    updatedOrder.splice(targetIndex, 0, draggedClipId);
+
+    setTimelineOrder(updatedOrder);
+
+    localStorage.setItem(
+      `kemmylabs-timeline-${project.id}-${episode.id}`,
+      JSON.stringify(updatedOrder),
+    );
+
+    setTimelineIndex(0);
+    setTimelinePlaying(false);
+    setDraggedClipId(null);
+    setDragOverClipId(null);
+  }
+
+  function playTimeline() {
+    if (orderedAssets.length === 0) return;
+
+    setTimelineIndex(0);
+    setTimelinePlaying(true);
+  }
+
+  useEffect(() => {
+  if (!timelinePlaying) return;
+
+  const video = timelineVideoRef.current;
+
+  if (video) {
+    void video.play().catch(() => {
+      setTimelinePlaying(false);
+      setError("Unable to play the next timeline clip.");
+    });
+  }
+}, [timelinePlaying, timelineIndex]);
 
   const totalDuration = assets.reduce(
     (total, asset) => total + asset.duration,
@@ -288,6 +394,115 @@ export function VideoProduction({
         </p>
       )}
 
+          <div className="space-y-4 rounded-xl border border-border bg-background p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold">Movie Timeline</h3>
+                <p className="text-xs text-muted">
+                  Arrange your scene clips in movie playback order.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={playTimeline}
+                disabled={orderedAssets.length === 0}
+                className="inline-flex items-center gap-2 rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-black disabled:opacity-40"
+              >
+                <Play size={16} />
+                Play Movie
+              </button>
+            </div>
+
+            {orderedAssets.length === 0 ? (
+              <p className="py-5 text-center text-sm text-muted">
+                Upload scene videos to build your movie timeline.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {orderedAssets.map((asset, index) => {
+                  return (
+                    <div
+                      key={asset.id}
+                      draggable
+                      onDragStart={(event) => {
+                        setDraggedClipId(asset.id);
+                        event.dataTransfer.effectAllowed = "move";
+                        event.dataTransfer.setData("text/plain", asset.id);
+                      }}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        setDragOverClipId(asset.id);
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        handleTimelineDrop(asset.id);
+                      }}
+                      onDragEnd={() => {
+                        setDraggedClipId(null);
+                        setDragOverClipId(null);
+                      }}
+                      className={`flex cursor-grab items-center gap-3 rounded-lg border p-3 ${
+                        dragOverClipId === asset.id
+                          ? "border-gold bg-gold/10"
+                          : "border-border"
+                      } ${draggedClipId === asset.id ? "opacity-40" : ""}`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => moveTimelineClip(index, -1)}
+                        disabled={index === 0}
+                        className="rounded-md p-2 text-muted hover:text-gold disabled:opacity-30"
+                        aria-label="Move clip up"
+                      >
+                        <ChevronUp size={18} />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => moveTimelineClip(index, 1)}
+                        disabled={index === orderedAssets.length - 1}
+                        className="rounded-md p-2 text-muted hover:text-gold disabled:opacity-30"
+                        aria-label="Move clip down"
+                      >
+                        <ChevronDown size={18} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+                {orderedAssets.length > 0 && (
+            <div className="space-y-3 rounded-xl border border-border bg-black p-4">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-semibold text-white">Movie Preview</h3>
+
+                <span className="text-xs text-gray-400">
+                  Clip {timelineIndex + 1} of {orderedAssets.length}
+                </span>
+              </div>
+
+              <video
+                ref={timelineVideoRef}
+                key={orderedAssets[timelineIndex]?.id}
+                src={previewUrls[orderedAssets[timelineIndex]?.id]}
+                controls
+                playsInline
+                preload="metadata"
+                className="max-h-[480px] w-full rounded-lg object-contain"
+                onEnded={() => {
+                  if (timelineIndex < orderedAssets.length - 1) {
+                    setTimelineIndex((current) => current + 1);
+                  } else {
+                    setTimelinePlaying(false);
+                    setTimelineIndex(0);
+                  }
+                }}
+                onPause={() => setTimelinePlaying(false)}
+              />
+            </div>
+          )}
       {loading ? (
         <p className="py-8 text-center text-sm text-muted">
           Loading video assets...
@@ -298,10 +513,9 @@ export function VideoProduction({
           <p className="mt-3 text-sm text-muted">
             Generate or add scenes before uploading video footage.
           </p>
-        </div>
-      ) : (
+        </div>      ) : (
         <div className="space-y-4">
-          {episode.scenes.map((scene) => {
+                    {episode.scenes.map((scene) => {
             const asset = assets.find(
               (item) => item.sceneId === scene.id,
             );
@@ -309,46 +523,44 @@ export function VideoProduction({
             return (
               <article
                 key={scene.id}
-                className="grid gap-4 rounded-xl border border-border bg-background p-4 md:grid-cols-[1fr_1.2fr]"
-              >
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-gold">
-                      Scene {scene.sceneNumber}
-                    </p>
-                    <h3 className="mt-1 font-semibold">
-                      {scene.title}
-                    </h3>
-                    <p className="mt-1 text-xs text-muted">
-                      {scene.location || "Location not specified"}
-                    </p>
-                  </div>
+              className="grid gap-4 rounded-xl border border-border bg-background p-4 md:grid-cols-[1fr_1.2fr]"
+            >
+              <div className="space-y-3">
+                <div>
+                  <p className="flex flex-wrap gap-3 text-xs text-muted">                    Scene {scene.sceneNumber}
+                  </p>
+                  <h3 className="mt-1 font-semibold">
+                    {scene.title}
+                  </h3>
+                  <p className="mt-1 text-xs text-muted">
+                    {scene.location || "Location not specified"}
+                  </p>
+                </div>
 
-                  {asset ? (
-                    <div className="space-y-2">
-                      <p className="break-all text-xs text-muted">
-                        {asset.fileName}
-                      </p>
-                      <div className="flex flex-wrap gap-3 text-xs text-muted">
-                        <span>{formatDuration(asset.duration)}</span>
-                        <span>{formatSize(asset.size)}</span>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(asset)}
-                        className="inline-flex items-center gap-2 text-xs text-red-400 transition hover:text-red-300"
-                      >
-                        <Trash2 size={14} />
-                        Remove clip
-                      </button>
+                {asset ? (
+                  <div className="space-y-2">
+                    <p className="break-all text-xs text-muted">
+                      {asset.fileName}
+                    </p>
+                    <div className="flex flex-wrap gap-3 text-xs text-muted">
+                      <span>{formatDuration(asset.duration)}</span>
+                      <span>{formatSize(asset.size)}</span>
                     </div>
-                  ) : (
-                    <p className="text-xs text-muted">
-                      No video uploaded for this scene.
-                    </p>
-                  )}
 
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(asset)}
+                      className="inline-flex items-center gap-2 text-xs text-red-400 transition hover:text-red-300"
+                    >
+                      <Trash2 size={14} />
+                      Remove clip
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted">
+                    No video uploaded for this scene.
+                  </p>
+                )}
                   <input
                     ref={(element) => {
                       inputRefs.current[scene.id] = element;
@@ -406,12 +618,12 @@ export function VideoProduction({
                       </p>
                     </div>
                   )}
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
 
       <p className="text-xs leading-5 text-muted">
         Video files are stored locally in this browser. Keep a separate
