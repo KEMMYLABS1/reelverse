@@ -11,6 +11,7 @@ import {
   Play,
   ChevronUp,
   ChevronDown,
+  Download,
 } from "lucide-react";
 
 import {
@@ -72,7 +73,8 @@ export function VideoProduction({
   const [uploadingScene, setUploadingScene] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-
+  const [exporting, setExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [timelineOrder, setTimelineOrder] = useState<string[]>([]);
   const [timelineIndex, setTimelineIndex] = useState(0);
@@ -311,7 +313,207 @@ export function VideoProduction({
     setTimelineIndex(0);
     setTimelinePlaying(true);
   }
+    async function exportMovie() {
+    if (orderedAssets.length === 0 || exporting) return;
 
+    setError("");
+    setSuccess("");
+    setExporting(true);
+    setExportProgress(0);
+
+    let recorder: MediaRecorder | null = null;
+    let video: HTMLVideoElement | null = null;
+    let audioContext: AudioContext | null = null;
+    let animationFrame = 0;
+    let stream: MediaStream | null = null;
+    const clipUrls: string[] = [];
+
+    try {
+      if (
+        typeof MediaRecorder === "undefined" ||
+        !HTMLCanvasElement.prototype.captureStream
+      ) {
+        throw new Error(
+          "Movie export is not supported by this browser. Try the latest Chrome or Edge.",
+        );
+      }
+
+      const mimeType = [
+        "video/webm;codecs=vp9,opus",
+        "video/webm;codecs=vp8,opus",
+        "video/webm",
+      ].find((type) => MediaRecorder.isTypeSupported(type));
+
+      if (!mimeType) {
+        throw new Error("This browser does not support WebM movie recording.");
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = 1280;
+      canvas.height = 720;
+
+      const context = canvas.getContext("2d");
+
+      if (!context) {
+        throw new Error("Unable to prepare the movie export canvas.");
+      }
+
+      context.fillStyle = "#000000";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      video = document.createElement("video");
+      video.playsInline = true;
+      video.preload = "auto";
+      video.muted = false;
+
+      stream = canvas.captureStream(30);
+
+      // Include clip audio when Web Audio is available.
+      try {
+        audioContext = new AudioContext();
+        const audioSource =
+          audioContext.createMediaElementSource(video);
+        const audioDestination =
+          audioContext.createMediaStreamDestination();
+
+        audioSource.connect(audioDestination);
+
+        audioDestination.stream.getAudioTracks().forEach((track) => {
+          stream?.addTrack(track);
+        });
+
+        await audioContext.resume();
+      } catch {
+        audioContext = null;
+      }
+
+      const drawFrame = () => {
+        if (video && video.readyState >= 2) {
+          context.fillStyle = "#000000";
+          context.fillRect(0, 0, canvas.width, canvas.height);
+
+          const scale = Math.min(
+            canvas.width / video.videoWidth,
+            canvas.height / video.videoHeight,
+          );
+
+          const width = video.videoWidth * scale;
+          const height = video.videoHeight * scale;
+          const x = (canvas.width - width) / 2;
+          const y = (canvas.height - height) / 2;
+
+          context.drawImage(video, x, y, width, height);
+        }
+
+        animationFrame = requestAnimationFrame(drawFrame);
+      };
+
+      animationFrame = requestAnimationFrame(drawFrame);
+
+      const chunks: BlobPart[] = [];
+
+      recorder = new MediaRecorder(stream, { mimeType });
+
+      const recording = new Promise<Blob>((resolve, reject) => {
+        recorder!.ondataavailable = (event) => {
+          if (event.data.size > 0) chunks.push(event.data);
+        };
+
+        recorder!.onerror = () => {
+          reject(new Error("The browser encountered an error recording the movie."));
+        };
+
+        recorder!.onstop = () => {
+          resolve(new Blob(chunks, { type: mimeType }));
+        };
+      });
+
+      recorder.start(1000);
+
+      for (let index = 0; index < orderedAssets.length; index += 1) {
+        const asset = orderedAssets[index];
+        const clipUrl = URL.createObjectURL(asset.blob);
+        clipUrls.push(clipUrl);
+
+        await new Promise<void>((resolve, reject) => {
+          if (!video) {
+            reject(new Error("Movie video player is unavailable."));
+            return;
+          }
+
+          video.onended = () => resolve();
+          video.onerror = () => {
+            reject(new Error(`Unable to read clip: ${asset.fileName}`));
+          };
+
+          video.onloadeddata = () => {
+            void video?.play().catch(() => {
+              reject(new Error(`Unable to play clip: ${asset.fileName}`));
+            });
+          };
+
+          video.src = clipUrl;
+          video.load();
+        });
+
+        setExportProgress(
+          Math.round(((index + 1) / orderedAssets.length) * 100),
+        );
+      }
+
+      recorder.stop();
+
+      const movieBlob = await recording;
+
+      if (movieBlob.size === 0) {
+        throw new Error("The exported movie is empty. Please try again.");
+      }
+
+      const downloadUrl = URL.createObjectURL(movieBlob);
+      const link = document.createElement("a");
+      const safeName = `${project.title}-${episode.title}`
+        .replace(/[^a-z0-9-_]+/gi, "-")
+        .replace(/^-|-$/g, "");
+
+      link.href = downloadUrl;
+      link.download = `${safeName || "movie"}.webm`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      URL.revokeObjectURL(downloadUrl);
+
+      setSuccess("Your movie has been exported and downloaded.");
+    } catch (exportError) {
+      if (recorder && recorder.state !== "inactive") {
+        recorder.stop();
+      }
+
+      setError(
+        exportError instanceof Error
+          ? exportError.message
+          : "Unable to export the movie.",
+      );
+    } finally {
+      cancelAnimationFrame(animationFrame);
+
+      if (video) {
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+      }
+
+      clipUrls.forEach((url) => URL.revokeObjectURL(url));
+
+      stream?.getTracks().forEach((track) => track.stop());
+
+      if (audioContext && audioContext.state !== "closed") {
+        await audioContext.close();
+      }
+
+      setExporting(false);
+    }
+  }
   useEffect(() => {
   if (!timelinePlaying) return;
 
@@ -403,16 +605,46 @@ export function VideoProduction({
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={playTimeline}
-                disabled={orderedAssets.length === 0}
-                className="inline-flex items-center gap-2 rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-black disabled:opacity-40"
-              >
-                <Play size={16} />
-                Play Movie
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={playTimeline}
+                  disabled={orderedAssets.length === 0 || exporting}
+                  className="inline-flex items-center gap-2 rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-black disabled:opacity-40"
+                >
+                  <Play size={16} />
+                  Play Movie
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => void exportMovie()}
+                  disabled={orderedAssets.length === 0 || exporting}
+                  className="inline-flex items-center gap-2 rounded-lg border border-gold px-4 py-2 text-sm font-semibold text-gold disabled:opacity-40"
+                >
+                  {exporting ? (
+                    <RefreshCw size={16} className="animate-spin" />
+                  ) : (
+                    <Download size={16} />
+                  )}
+                  {exporting ? `Exporting ${exportProgress}%` : "Export Movie"}
+                </button>
+              </div>
             </div>
+
+            {exporting && (
+              <div className="space-y-2">
+                <div className="h-2 overflow-hidden rounded-full bg-border">
+                  <div
+                    className="h-full rounded-full bg-gold transition-all"
+                    style={{ width: `${exportProgress}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted">
+                  Keep this tab open while your movie is being exported.
+                </p>
+              </div>
+            )}
 
             {orderedAssets.length === 0 ? (
               <p className="py-5 text-center text-sm text-muted">
